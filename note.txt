@@ -1,0 +1,18 @@
+# Example usage with command-line arguments (replace with your actual values)
+python reads3.py --bucket YOUR-BUCKET-NAME --region YOUR-AWS-REGION --access-key 'YOUR-AWS-ACCESS-KEY' --secret-key 'YOUR-AWS-SECRET-KEY'
+
+# Example usage for S3 to Azure migration (replace with your actual values)
+python reads3_copyazure.py --bucket YOUR-BUCKET-NAME --region YOUR-AWS-REGION --access-key 'YOUR-AWS-ACCESS-KEY' --secret-key 'YOUR-AWS-SECRET-KEY' --azure-sas 'https://yourstorageaccount.blob.core.windows.net/yourcontainer?sv=YYYY-MM-DD&ss=b&srt=co&sp=rwlacx&se=YYYY-MM-DDTHH:MM:SSZ&st=YYYY-MM-DDTHH:MM:SSZ&spr=https&sig=YOUR-SAS-SIGNATURE'
+
+# Alternative: Using environment variables (Windows PowerShell)
+$env:S3_BUCKET = "YOUR-BUCKET-NAME"
+$env:AWS_REGION = "YOUR-AWS-REGION"  # e.g., us-east-1, af-south-1
+$env:AWS_ACCESS_KEY_ID = "YOUR-AWS-ACCESS-KEY"
+$env:AWS_SECRET_ACCESS_KEY = "YOUR-AWS-SECRET-KEY"
+$env:AZURE_BLOB_SAS_URL = "https://yourstorageaccount.blob.core.windows.net/yourcontainer?sv=...&sig=..."
+
+# Then run the script without arguments
+python reads3_copyazure.py
+
+# Security Note: Never commit real credentials to version control!
+# Use environment variables or secure credential storage for production use.
