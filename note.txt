@@ -16,3 +16,13 @@ python reads3_copyazure.py
 
 # Security Note: Never commit real credentials to version control!
 # Use environment variables or secure credential storage for production use.
+
+
+if using copyawstoazure.py
+$env:AZURE_STORAGE_ACCOUNT_NAME = "<yourStorageAccountName>"
+$env:AWS_REGION = "us-east-1"
+$env:AWS_ACCESS_KEY_ID = "<key>"
+$env:AWS_SECRET_ACCESS_KEY = "<secret>"
+$env:AWS_SESSION_TOKEN = "<token>" # only if using temporary creds
+Execute:
+python copyawstoazure.py
