@@ -18,6 +18,19 @@ python reads3_copyazure.py
 # Use environment variables or secure credential storage for production use.
 
 
+$ az cli command to grant current user storage blob data contributor role
+# Example usage with command-line arguments (replace with your actual values)
+# get the current user id
+$yourUserId = az ad signed-in-user show --query id --output tsv
+# assign the role to the user for a patricular storage account
+$storageAccountName = "<yourStorageAccountName>"
+$storageAccountResourceGroup = "<yourResourceGroupName>"
+$storageAccountId = az storage account show --name $storageAccountName --resource-group $storageAccountResourceGroup --query id --output tsv
+$az role assignment create --assignee $yourUserId --role "Storage Blob Data Contributor" --scope $storageAccountId
+# or assign the role to the user at the subscription level
+az role assignment create --assignee $yourUserId --role "Storage Blob Data Contributor"
+
+
 if using copyawstoazure.py
 $env:AZURE_STORAGE_ACCOUNT_NAME = "<yourStorageAccountName>"
 $env:AWS_REGION = "us-east-1"
