@@ -29,16 +29,25 @@ The easiest way to get started is to use the automated setup script in Azure Clo
    - Click the Cloud Shell icon in the top navigation bar
    - Select Bash environment
 
-2. **Run the setup script directly**
+2. **Download and run the setup script**
+   ```bash
+   # Download the script
+   wget https://raw.githubusercontent.com/ahmedsza/awss3toazureblobcopy/main/setup-and-run.sh
+   
+   # Review the script (optional but recommended)
+   cat setup-and-run.sh
+   
+   # Make it executable and run with your parameters
+   chmod +x setup-and-run.sh
+   ./setup-and-run.sh --account-name yourstorageaccount --region us-east-1
+   ```
+   
+   **Alternative (Quick but less secure):**
+   If you trust the source, you can pipe directly to bash:
    ```bash
    curl -sL https://raw.githubusercontent.com/ahmedsza/awss3toazureblobcopy/main/setup-and-run.sh | bash -s -- --account-name yourstorageaccount --region us-east-1
    ```
-
-   Or download and run it:
-   ```bash
-   wget https://raw.githubusercontent.com/ahmedsza/awss3toazureblobcopy/main/setup-and-run.sh
-   bash setup-and-run.sh --account-name yourstorageaccount --region us-east-1
-   ```
+   ⚠️ **Security Note**: Piping scripts from the internet directly to bash can be risky. It's recommended to download and inspect the script first.
 
 The script will automatically:
 - Clone this repository

@@ -71,7 +71,7 @@ echo -e "${YELLOW}Step 1: Cloning repository...${NC}"
 if [ -d "$REPO_DIR" ]; then
     echo "Repository directory already exists. Pulling latest changes..."
     cd "$REPO_DIR"
-    git pull origin main || git pull origin master || echo "Could not pull latest changes, using existing code"
+    git pull || echo "Could not pull latest changes, using existing code"
     cd ..
 else
     echo "Cloning repository from $REPO_URL..."
@@ -116,8 +116,8 @@ echo ""
 # Step 5: Verify Azure login
 echo -e "${YELLOW}Step 5: Verifying Azure authentication...${NC}"
 echo "Checking Azure CLI login status..."
-if az account show &> /dev/null; then
-    ACCOUNT_NAME=$(az account show --query "name" -o tsv)
+if az account show 2>/dev/null 1>&2; then
+    ACCOUNT_NAME=$(az account show --query "name" -o tsv 2>/dev/null)
     echo -e "${GREEN}✓${NC} Logged in to Azure as: $ACCOUNT_NAME"
 else
     echo -e "${YELLOW}Warning: Not logged in to Azure CLI${NC}"
