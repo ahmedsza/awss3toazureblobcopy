@@ -37,7 +37,8 @@ def process_distribution(dist: Dict[str, Any], idx: int) -> None:
             print(f"    Domain Name: {origin['DomainName']}")
             
             # Check if this is an S3 origin
-            if 's3' in origin['DomainName'].lower() and '.amazonaws.com' in origin['DomainName']:
+            # Ensure .amazonaws.com is at the end of the domain to prevent URL spoofing
+            if 's3' in origin['DomainName'].lower() and origin['DomainName'].endswith('.amazonaws.com'):
                 # Extract S3 bucket name from domain
                 # Format: bucket-name.s3.region.amazonaws.com or bucket-name.s3.amazonaws.com
                 domain_parts = origin['DomainName'].split('.')
