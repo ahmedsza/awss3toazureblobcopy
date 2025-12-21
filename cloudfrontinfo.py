@@ -1,7 +1,95 @@
 import boto3
 import argparse
 import json
-from typing import Optional
+from typing import Optional, Dict, Any
+
+
+def process_distribution(dist: Dict[str, Any], idx: int) -> None:
+    """
+    Process and display information for a single CloudFront distribution.
+    
+    Args:
+        dist: Distribution dictionary from CloudFront API
+        idx: Display index for the distribution
+    """
+    print(f"\n[Distribution #{idx}]")
+    print(f"Distribution ID: {dist['Id']}")
+    print(f"Domain Name: {dist['DomainName']}")
+    print(f"Status: {dist['Status']}")
+    print(f"Enabled: {dist['Enabled']}")
+    
+    # Get custom domain names (CNAMEs)
+    if 'Aliases' in dist and 'Items' in dist['Aliases'] and dist['Aliases']['Quantity'] > 0:
+        print(f"Custom Domains (CNAMEs):")
+        for cname in dist['Aliases']['Items']:
+            print(f"  - {cname}")
+    else:
+        print("Custom Domains (CNAMEs): None")
+    
+    # Get origin information
+    if 'Origins' in dist and 'Items' in dist['Origins']:
+        print(f"\nOrigins ({dist['Origins']['Quantity']}):")
+        
+        for origin_idx, origin in enumerate(dist['Origins']['Items'], 1):
+            print(f"\n  Origin #{origin_idx}:")
+            print(f"    Origin ID: {origin['Id']}")
+            print(f"    Domain Name: {origin['DomainName']}")
+            
+            # Check if this is an S3 origin
+            if 's3' in origin['DomainName'].lower() and '.amazonaws.com' in origin['DomainName']:
+                # Extract S3 bucket name from domain
+                # Format: bucket-name.s3.region.amazonaws.com or bucket-name.s3.amazonaws.com
+                domain_parts = origin['DomainName'].split('.')
+                bucket_name = domain_parts[0]
+                print(f"    Origin Type: S3 Bucket")
+                print(f"    S3 Bucket Name: {bucket_name}")
+                
+                # Check for S3OriginConfig (indicates S3 origin)
+                if 'S3OriginConfig' in origin:
+                    print(f"    Origin Access Identity: {origin['S3OriginConfig'].get('OriginAccessIdentity', 'None')}")
+            else:
+                # This is a custom origin (not S3)
+                print(f"    Origin Type: Custom Origin (Non-S3)")
+                
+                # Display custom origin details
+                if 'CustomOriginConfig' in origin:
+                    custom_config = origin['CustomOriginConfig']
+                    print(f"    HTTP Port: {custom_config.get('HTTPPort', 'N/A')}")
+                    print(f"    HTTPS Port: {custom_config.get('HTTPSPort', 'N/A')}")
+                    print(f"    Origin Protocol Policy: {custom_config.get('OriginProtocolPolicy', 'N/A')}")
+                    print(f"    Origin SSL Protocols: {custom_config.get('OriginSslProtocols', {}).get('Items', ['N/A'])}")
+                    print(f"    Origin Read Timeout: {custom_config.get('OriginReadTimeout', 'N/A')} seconds")
+                    print(f"    Origin Keepalive Timeout: {custom_config.get('OriginKeepaliveTimeout', 'N/A')} seconds")
+            
+            # Display connection attempts and timeout
+            if 'ConnectionAttempts' in origin:
+                print(f"    Connection Attempts: {origin['ConnectionAttempts']}")
+            if 'ConnectionTimeout' in origin:
+                print(f"    Connection Timeout: {origin['ConnectionTimeout']} seconds")
+            
+            # Display custom headers if any
+            if 'CustomHeaders' in origin and origin['CustomHeaders']['Quantity'] > 0:
+                print(f"    Custom Headers:")
+                for header in origin['CustomHeaders']['Items']:
+                    print(f"      - {header['HeaderName']}: {header['HeaderValue']}")
+    
+    # Display default cache behavior
+    if 'DefaultCacheBehavior' in dist:
+        behavior = dist['DefaultCacheBehavior']
+        print(f"\nDefault Cache Behavior:")
+        print(f"  Target Origin ID: {behavior.get('TargetOriginId', 'N/A')}")
+        print(f"  Viewer Protocol Policy: {behavior.get('ViewerProtocolPolicy', 'N/A')}")
+        print(f"  Allowed Methods: {behavior.get('AllowedMethods', {}).get('Items', ['N/A'])}")
+    
+    # Display price class
+    if 'PriceClass' in dist:
+        print(f"\nPrice Class: {dist['PriceClass']}")
+    
+    # Display comment/description if available
+    if 'Comment' in dist and dist['Comment']:
+        print(f"Comment: {dist['Comment']}")
+    
+    print("\n" + "=" * 80)
 
 
 def get_cloudfront_distributions(region: str, access_key: str, secret_key: str) -> None:
@@ -37,85 +125,10 @@ def get_cloudfront_distributions(region: str, access_key: str, secret_key: str) 
         print("=" * 80)
         
         # Process each distribution
-        for idx, dist in enumerate(distributions, 1):
-            print(f"\n[Distribution #{idx}]")
-            print(f"Distribution ID: {dist['Id']}")
-            print(f"Domain Name: {dist['DomainName']}")
-            print(f"Status: {dist['Status']}")
-            print(f"Enabled: {dist['Enabled']}")
-            
-            # Get custom domain names (CNAMEs)
-            if 'Aliases' in dist and 'Items' in dist['Aliases'] and dist['Aliases']['Quantity'] > 0:
-                print(f"Custom Domains (CNAMEs):")
-                for cname in dist['Aliases']['Items']:
-                    print(f"  - {cname}")
-            else:
-                print("Custom Domains (CNAMEs): None")
-            
-            # Get origin information
-            if 'Origins' in dist and 'Items' in dist['Origins']:
-                print(f"\nOrigins ({dist['Origins']['Quantity']}):")
-                
-                for origin_idx, origin in enumerate(dist['Origins']['Items'], 1):
-                    print(f"\n  Origin #{origin_idx}:")
-                    print(f"    Origin ID: {origin['Id']}")
-                    print(f"    Domain Name: {origin['DomainName']}")
-                    
-                    # Check if this is an S3 origin
-                    if 's3' in origin['DomainName'].lower() and '.amazonaws.com' in origin['DomainName']:
-                        # Extract S3 bucket name from domain
-                        # Format: bucket-name.s3.region.amazonaws.com or bucket-name.s3.amazonaws.com
-                        domain_parts = origin['DomainName'].split('.')
-                        bucket_name = domain_parts[0]
-                        print(f"    Origin Type: S3 Bucket")
-                        print(f"    S3 Bucket Name: {bucket_name}")
-                        
-                        # Check for S3OriginConfig (indicates S3 origin)
-                        if 'S3OriginConfig' in origin:
-                            print(f"    Origin Access Identity: {origin['S3OriginConfig'].get('OriginAccessIdentity', 'None')}")
-                    else:
-                        # This is a custom origin (not S3)
-                        print(f"    Origin Type: Custom Origin (Non-S3)")
-                        
-                        # Display custom origin details
-                        if 'CustomOriginConfig' in origin:
-                            custom_config = origin['CustomOriginConfig']
-                            print(f"    HTTP Port: {custom_config.get('HTTPPort', 'N/A')}")
-                            print(f"    HTTPS Port: {custom_config.get('HTTPSPort', 'N/A')}")
-                            print(f"    Origin Protocol Policy: {custom_config.get('OriginProtocolPolicy', 'N/A')}")
-                            print(f"    Origin SSL Protocols: {custom_config.get('OriginSslProtocols', {}).get('Items', ['N/A'])}")
-                            print(f"    Origin Read Timeout: {custom_config.get('OriginReadTimeout', 'N/A')} seconds")
-                            print(f"    Origin Keepalive Timeout: {custom_config.get('OriginKeepaliveTimeout', 'N/A')} seconds")
-                    
-                    # Display connection attempts and timeout
-                    if 'ConnectionAttempts' in origin:
-                        print(f"    Connection Attempts: {origin['ConnectionAttempts']}")
-                    if 'ConnectionTimeout' in origin:
-                        print(f"    Connection Timeout: {origin['ConnectionTimeout']} seconds")
-                    
-                    # Display custom headers if any
-                    if 'CustomHeaders' in origin and origin['CustomHeaders']['Quantity'] > 0:
-                        print(f"    Custom Headers:")
-                        for header in origin['CustomHeaders']['Items']:
-                            print(f"      - {header['HeaderName']}: {header['HeaderValue']}")
-            
-            # Display default cache behavior
-            if 'DefaultCacheBehavior' in dist:
-                behavior = dist['DefaultCacheBehavior']
-                print(f"\nDefault Cache Behavior:")
-                print(f"  Target Origin ID: {behavior.get('TargetOriginId', 'N/A')}")
-                print(f"  Viewer Protocol Policy: {behavior.get('ViewerProtocolPolicy', 'N/A')}")
-                print(f"  Allowed Methods: {behavior.get('AllowedMethods', {}).get('Items', ['N/A'])}")
-            
-            # Display price class
-            if 'PriceClass' in dist:
-                print(f"\nPrice Class: {dist['PriceClass']}")
-            
-            # Display comment/description if available
-            if 'Comment' in dist and dist['Comment']:
-                print(f"Comment: {dist['Comment']}")
-            
-            print("\n" + "=" * 80)
+        distribution_count = 0
+        for dist in distributions:
+            distribution_count += 1
+            process_distribution(dist, distribution_count)
         
         # Handle pagination if there are more distributions
         while response.get('DistributionList', {}).get('IsTruncated', False):
@@ -125,50 +138,9 @@ def get_cloudfront_distributions(region: str, access_key: str, secret_key: str) 
             if 'DistributionList' in response and 'Items' in response['DistributionList']:
                 distributions = response['DistributionList']['Items']
                 
-                for idx, dist in enumerate(distributions, 1):
-                    # Process additional distributions (same logic as above)
-                    print(f"\n[Distribution #{idx}]")
-                    print(f"Distribution ID: {dist['Id']}")
-                    print(f"Domain Name: {dist['DomainName']}")
-                    print(f"Status: {dist['Status']}")
-                    print(f"Enabled: {dist['Enabled']}")
-                    
-                    if 'Aliases' in dist and 'Items' in dist['Aliases'] and dist['Aliases']['Quantity'] > 0:
-                        print(f"Custom Domains (CNAMEs):")
-                        for cname in dist['Aliases']['Items']:
-                            print(f"  - {cname}")
-                    else:
-                        print("Custom Domains (CNAMEs): None")
-                    
-                    if 'Origins' in dist and 'Items' in dist['Origins']:
-                        print(f"\nOrigins ({dist['Origins']['Quantity']}):")
-                        
-                        for origin_idx, origin in enumerate(dist['Origins']['Items'], 1):
-                            print(f"\n  Origin #{origin_idx}:")
-                            print(f"    Origin ID: {origin['Id']}")
-                            print(f"    Domain Name: {origin['DomainName']}")
-                            
-                            if 's3' in origin['DomainName'].lower() and '.amazonaws.com' in origin['DomainName']:
-                                domain_parts = origin['DomainName'].split('.')
-                                bucket_name = domain_parts[0]
-                                print(f"    Origin Type: S3 Bucket")
-                                print(f"    S3 Bucket Name: {bucket_name}")
-                                
-                                if 'S3OriginConfig' in origin:
-                                    print(f"    Origin Access Identity: {origin['S3OriginConfig'].get('OriginAccessIdentity', 'None')}")
-                            else:
-                                print(f"    Origin Type: Custom Origin (Non-S3)")
-                                
-                                if 'CustomOriginConfig' in origin:
-                                    custom_config = origin['CustomOriginConfig']
-                                    print(f"    HTTP Port: {custom_config.get('HTTPPort', 'N/A')}")
-                                    print(f"    HTTPS Port: {custom_config.get('HTTPSPort', 'N/A')}")
-                                    print(f"    Origin Protocol Policy: {custom_config.get('OriginProtocolPolicy', 'N/A')}")
-                                    print(f"    Origin SSL Protocols: {custom_config.get('OriginSslProtocols', {}).get('Items', ['N/A'])}")
-                                    print(f"    Origin Read Timeout: {custom_config.get('OriginReadTimeout', 'N/A')} seconds")
-                                    print(f"    Origin Keepalive Timeout: {custom_config.get('OriginKeepaliveTimeout', 'N/A')} seconds")
-                    
-                    print("\n" + "=" * 80)
+                for dist in distributions:
+                    distribution_count += 1
+                    process_distribution(dist, distribution_count)
                     
     except Exception as e:
         print(f"Error retrieving CloudFront distributions: {str(e)}")
