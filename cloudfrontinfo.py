@@ -2,6 +2,7 @@ import boto3
 import argparse
 import json
 from typing import Optional, Dict, Any
+from botocore.exceptions import ClientError, BotoCoreError
 
 
 def process_distribution(dist: Dict[str, Any], idx: int) -> None:
@@ -142,8 +143,14 @@ def get_cloudfront_distributions(region: str, access_key: str, secret_key: str) 
                     distribution_count += 1
                     process_distribution(dist, distribution_count)
                     
+    except ClientError as e:
+        error_code = e.response.get('Error', {}).get('Code', 'Unknown')
+        error_message = e.response.get('Error', {}).get('Message', str(e))
+        print(f"AWS ClientError retrieving CloudFront distributions: {error_code} - {error_message}")
+    except BotoCoreError as e:
+        print(f"AWS BotoCoreError retrieving CloudFront distributions: {str(e)}")
     except Exception as e:
-        print(f"Error retrieving CloudFront distributions: {str(e)}")
+        print(f"Unexpected error retrieving CloudFront distributions: {str(e)}")
 
 
 def main():
