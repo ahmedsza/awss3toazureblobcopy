@@ -17,7 +17,7 @@ def format_size(size_bytes: int) -> str:
     return f"{size_bytes:.2f} PB"
 
 
-def get_bucket_region(s3_client, bucket_name: str) -> str:
+def get_bucket_region(s3_client: Any, bucket_name: str) -> str:
     """
     Get the region of an S3 bucket.
     """
@@ -34,7 +34,7 @@ def get_bucket_region(s3_client, bucket_name: str) -> str:
 
 
 def get_bucket_info(
-    s3_session,
+    s3_session: Any,
     bucket_name: str,
     bucket_region: str
 ) -> Dict[str, Any]:
