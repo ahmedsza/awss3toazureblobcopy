@@ -1,6 +1,6 @@
 import argparse
 import os
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 
 import boto3
 from botocore.exceptions import ClientError
@@ -33,18 +33,16 @@ def get_bucket_region(s3_client, bucket_name: str) -> str:
         return "us-east-1"
 
 
-def get_bucket_info(s3_client, bucket_name: str, bucket_region: str) -> Dict[str, any]:
+def get_bucket_info(
+    s3_session,
+    bucket_name: str,
+    bucket_region: str
+) -> Dict[str, Any]:
     """
     Get information about an S3 bucket including object count and total size.
     """
     # Create a region-specific client for this bucket
-    s3_regional_client = boto3.client(
-        's3',
-        region_name=bucket_region,
-        aws_access_key_id=s3_client._request_signer._credentials.access_key,
-        aws_secret_access_key=s3_client._request_signer._credentials.secret_key,
-        aws_session_token=s3_client._request_signer._credentials.token
-    )
+    s3_regional_client = s3_session.client('s3', region_name=bucket_region)
     
     object_count = 0
     total_size = 0
@@ -81,7 +79,7 @@ def enumerate_s3_buckets(
     aws_access_key_id: Optional[str] = None,
     aws_secret_access_key: Optional[str] = None,
     aws_session_token: Optional[str] = None
-) -> List[Dict[str, any]]:
+) -> List[Dict[str, Any]]:
     """
     Enumerate all S3 buckets and get information about each one.
     """
@@ -93,7 +91,7 @@ def enumerate_s3_buckets(
     if aws_session_token:
         session_kwargs["aws_session_token"] = aws_session_token
     
-    # Create S3 client for listing buckets
+    # Create S3 session and client for listing buckets
     s3_session = boto3.session.Session(**session_kwargs)
     s3_client = s3_session.client("s3", region_name=aws_region_hint or "us-east-1")
     
@@ -117,7 +115,7 @@ def enumerate_s3_buckets(
         print(f"  Region: {bucket_region}")
         
         # Get bucket information
-        bucket_info = get_bucket_info(s3_client, bucket_name, bucket_region)
+        bucket_info = get_bucket_info(s3_session, bucket_name, bucket_region)
         bucket_info_list.append(bucket_info)
         
         if bucket_info['error']:
@@ -131,7 +129,7 @@ def enumerate_s3_buckets(
     return bucket_info_list
 
 
-def print_summary(bucket_info_list: List[Dict[str, any]]) -> None:
+def print_summary(bucket_info_list: List[Dict[str, Any]]) -> None:
     """
     Print a summary of all buckets.
     """
