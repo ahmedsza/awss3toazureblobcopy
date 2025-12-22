@@ -172,6 +172,9 @@ def copy_all_buckets_s3_to_azure(
 	s3_client_cache: Dict[str, object] = {}
 	container_cache: Dict[str, object] = {}
 
+
+	skipped_buckets_due_to_count = []
+
 	for bucket_name in filtered_buckets:
 		buckets_processed += 1
 
@@ -193,21 +196,35 @@ def copy_all_buckets_s3_to_azure(
 
 		print(f"  Bucket region: {bucket_region}")
 
-		had_any = False
+		# Count S3 objects (excluding directory markers)
+		s3_object_count = 0
+		s3_keys = []
 		for obj in _iter_s3_objects(s3_bucket_client, bucket_name):
-			had_any = True
-			objects_total += 1
 			key = obj.get("Key")
 			size = obj.get("Size", 0)
-
 			if not key:
-				objects_skipped += 1
 				continue
-
-			# Skip directory markers
 			if key.endswith("/") and size == 0:
-				objects_skipped += 1
 				continue
+			s3_object_count += 1
+			s3_keys.append((key, size))
+
+		# Count Azure blobs
+		try:
+			azure_blob_count = sum(1 for _ in container_client.list_blobs())
+		except Exception as e:
+			print(f"  Error listing blobs in Azure container '{container_name}': {e}")
+			azure_blob_count = -1
+
+		if s3_object_count == azure_blob_count and s3_object_count > 0:
+			print(f"  Skipping copy: S3 object count matches Azure blob count ({s3_object_count})")
+			skipped_buckets_due_to_count.append(bucket_name)
+			continue
+
+		had_any = False
+		for key, size in s3_keys:
+			had_any = True
+			objects_total += 1
 
 			try:
 				_upload_s3_object_to_blob(
@@ -241,9 +258,11 @@ def copy_all_buckets_s3_to_azure(
 		objects_skipped=objects_skipped,
 	)
 	# Attach for summary printing
-	stats.copied_buckets = filtered_buckets
+	# Remove skipped buckets from copied_buckets
+	stats.copied_buckets = [b for b in filtered_buckets if b not in skipped_buckets_due_to_count]
 	stats.ignored_buckets = ignored_buckets
 	stats.region_filter = region_filter
+	stats.skipped_buckets_due_to_count = skipped_buckets_due_to_count
 	return stats
 
 
@@ -299,10 +318,17 @@ def main() -> int:
 	print(f"- Objects failed: {stats.objects_failed}")
 	print(f"- Region filter: {getattr(stats, 'region_filter', None)}")
 
+
 	print("\nBuckets copied:")
 	for b in getattr(stats, 'copied_buckets', []):
 		print(f"  - {b}")
 	if not getattr(stats, 'copied_buckets', []):
+		print("  (none)")
+
+	print("\nBuckets skipped (object count matches Azure):")
+	for b in getattr(stats, 'skipped_buckets_due_to_count', []):
+		print(f"  - {b}")
+	if not getattr(stats, 'skipped_buckets_due_to_count', []):
 		print("  (none)")
 
 	print("\nBuckets ignored (not in region):")
