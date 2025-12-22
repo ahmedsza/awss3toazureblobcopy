@@ -152,12 +152,15 @@ def copy_all_buckets_s3_to_azure(
 	region_filter = (region_filter or "us-east-1").strip()
 
 	filtered_buckets = []
+	ignored_buckets = []
 	bucket_regions = {}
 	for bucket_name in all_buckets:
 		bucket_region = _get_bucket_region(s3_global_client, bucket_name)
 		bucket_regions[bucket_name] = bucket_region
 		if bucket_region == region_filter:
 			filtered_buckets.append(bucket_name)
+		else:
+			ignored_buckets.append((bucket_name, bucket_region))
 
 	buckets_total = len(filtered_buckets)
 	buckets_processed = 0
@@ -228,7 +231,8 @@ def copy_all_buckets_s3_to_azure(
 		if not had_any:
 			print("  (Bucket empty)")
 
-	return CopyStats(
+	# Attach extra info for summary
+	stats = CopyStats(
 		buckets_total=buckets_total,
 		buckets_processed=buckets_processed,
 		objects_total=objects_total,
@@ -236,6 +240,11 @@ def copy_all_buckets_s3_to_azure(
 		objects_failed=objects_failed,
 		objects_skipped=objects_skipped,
 	)
+	# Attach for summary printing
+	stats.copied_buckets = filtered_buckets
+	stats.ignored_buckets = ignored_buckets
+	stats.region_filter = region_filter
+	return stats
 
 
 def _build_account_url(account_name: Optional[str], account_url: Optional[str]) -> str:
@@ -281,14 +290,26 @@ def main() -> int:
 		max_concurrency=max(1, int(args.max_concurrency)),
 	)
 
-	print(
-		"\nSummary:\n"
-		f"- Buckets processed: {stats.buckets_processed}/{stats.buckets_total}\n"
-		f"- Objects total: {stats.objects_total}\n"
-		f"- Objects copied: {stats.objects_copied}\n"
-		f"- Objects skipped: {stats.objects_skipped}\n"
-		f"- Objects failed: {stats.objects_failed}"
-	)
+
+	print("\nSummary:")
+	print(f"- Buckets processed: {stats.buckets_processed}/{stats.buckets_total}")
+	print(f"- Objects total: {stats.objects_total}")
+	print(f"- Objects copied: {stats.objects_copied}")
+	print(f"- Objects skipped: {stats.objects_skipped}")
+	print(f"- Objects failed: {stats.objects_failed}")
+	print(f"- Region filter: {getattr(stats, 'region_filter', None)}")
+
+	print("\nBuckets copied:")
+	for b in getattr(stats, 'copied_buckets', []):
+		print(f"  - {b}")
+	if not getattr(stats, 'copied_buckets', []):
+		print("  (none)")
+
+	print("\nBuckets ignored (not in region):")
+	for b, r in getattr(stats, 'ignored_buckets', []):
+		print(f"  - {b} (region: {r})")
+	if not getattr(stats, 'ignored_buckets', []):
+		print("  (none)")
 
 	return 0 if stats.objects_failed == 0 else 2
 
