@@ -142,24 +142,9 @@ def copy_all_buckets_s3_to_azure(
 	blob_service_client = BlobServiceClient(account_url=azure_account_url, credential=credential)
 
 	buckets_resp = s3_global_client.list_buckets()
-	all_buckets = [b["Name"] for b in buckets_resp.get("Buckets", [])]
+	buckets = [b["Name"] for b in buckets_resp.get("Buckets", [])]
 
-	# Determine the region to filter on
-	region_filter = aws_region_hint
-	if not region_filter:
-		region_filter = os.environ.get("AWS_REGION")
-	# Normalize region name (AWS returns None or 'EU' for some buckets)
-	region_filter = (region_filter or "us-east-1").strip()
-
-	filtered_buckets = []
-	bucket_regions = {}
-	for bucket_name in all_buckets:
-		bucket_region = _get_bucket_region(s3_global_client, bucket_name)
-		bucket_regions[bucket_name] = bucket_region
-		if bucket_region == region_filter:
-			filtered_buckets.append(bucket_name)
-
-	buckets_total = len(filtered_buckets)
+	buckets_total = len(buckets)
 	buckets_processed = 0
 	objects_total = 0
 	objects_copied = 0
@@ -169,7 +154,7 @@ def copy_all_buckets_s3_to_azure(
 	s3_client_cache: Dict[str, object] = {}
 	container_cache: Dict[str, object] = {}
 
-	for bucket_name in filtered_buckets:
+	for bucket_name in buckets:
 		buckets_processed += 1
 
 		container_name = bucket_name
@@ -182,7 +167,7 @@ def copy_all_buckets_s3_to_azure(
 			container_client = blob_service_client.get_container_client(container_name)
 			container_cache[container_name] = container_client
 
-		bucket_region = bucket_regions[bucket_name]
+		bucket_region = _get_bucket_region(s3_global_client, bucket_name)
 		s3_bucket_client = s3_client_cache.get(bucket_region)
 		if s3_bucket_client is None:
 			s3_bucket_client = s3_session.client("s3", region_name=bucket_region)
