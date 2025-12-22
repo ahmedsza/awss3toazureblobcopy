@@ -11,7 +11,7 @@ from azure.core.exceptions import ResourceExistsError, ResourceNotFoundError
 from azure.storage.blob import BlobServiceClient
 
 
-@dataclass(frozen=True)
+@dataclass
 class CopyStats:
 	buckets_total: int
 	buckets_processed: int
@@ -19,6 +19,18 @@ class CopyStats:
 	objects_copied: int
 	objects_failed: int
 	objects_skipped: int
+	copied_buckets: list = None
+	ignored_buckets: list = None
+	region_filter: str = None
+	skipped_buckets_due_to_count: list = None
+	
+	def __post_init__(self):
+		if self.copied_buckets is None:
+			self.copied_buckets = []
+		if self.ignored_buckets is None:
+			self.ignored_buckets = []
+		if self.skipped_buckets_due_to_count is None:
+			self.skipped_buckets_due_to_count = []
 
 
 def _validate_container_name_or_raise(container_name: str) -> None:
@@ -259,13 +271,11 @@ def copy_all_buckets_s3_to_azure(
 		objects_copied=objects_copied,
 		objects_failed=objects_failed,
 		objects_skipped=objects_skipped,
+		copied_buckets=[b for b in filtered_buckets if b not in skipped_buckets_due_to_count],
+		ignored_buckets=ignored_buckets,
+		region_filter=region_filter,
+		skipped_buckets_due_to_count=skipped_buckets_due_to_count,
 	)
-	# Attach for summary printing
-	# Remove skipped buckets from copied_buckets
-	stats.copied_buckets = [b for b in filtered_buckets if b not in skipped_buckets_due_to_count]
-	stats.ignored_buckets = ignored_buckets
-	stats.region_filter = region_filter
-	stats.skipped_buckets_due_to_count = skipped_buckets_due_to_count
 	return stats
 
 
@@ -323,26 +333,26 @@ def main() -> int:
 
 
 	print("\nBuckets copied:")
-	for b in getattr(stats, 'copied_buckets', []):
+	for b in stats.copied_buckets:
 		print(f"  - {b}")
-	if not getattr(stats, 'copied_buckets', []):
+	if not stats.copied_buckets:
 		print("  (none)")
 
 	print("\nBuckets skipped (object count matches Azure):")
-	for b in getattr(stats, 'skipped_buckets_due_to_count', []):
+	for b in stats.skipped_buckets_due_to_count:
 		print(f"  - {b}")
-	if not getattr(stats, 'skipped_buckets_due_to_count', []):
+	if not stats.skipped_buckets_due_to_count:
 		print("  (none)")
 
 	print("\nBuckets ignored:")
-	for entry in getattr(stats, 'ignored_buckets', []):
+	for entry in stats.ignored_buckets:
 		if len(entry) == 3:
 			b, r, reason = entry
 			print(f"  - {b} (region: {r}) [reason: {reason}]")
 		else:
 			b, r = entry
 			print(f"  - {b} (region: {r})")
-	if not getattr(stats, 'ignored_buckets', []):
+	if not stats.ignored_buckets:
 		print("  (none)")
 
 	return 0 if stats.objects_failed == 0 else 2
