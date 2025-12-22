@@ -157,6 +157,9 @@ def copy_all_buckets_s3_to_azure(
 	for bucket_name in all_buckets:
 		bucket_region = _get_bucket_region(s3_global_client, bucket_name)
 		bucket_regions[bucket_name] = bucket_region
+		if bucket_name.startswith("ecleg-frontend"):
+			ignored_buckets.append((bucket_name, bucket_region, "name starts with 'ecleg-frontend'"))
+			continue
 		if bucket_region == region_filter:
 			filtered_buckets.append(bucket_name)
 		else:
@@ -331,9 +334,14 @@ def main() -> int:
 	if not getattr(stats, 'skipped_buckets_due_to_count', []):
 		print("  (none)")
 
-	print("\nBuckets ignored (not in region):")
-	for b, r in getattr(stats, 'ignored_buckets', []):
-		print(f"  - {b} (region: {r})")
+	print("\nBuckets ignored:")
+	for entry in getattr(stats, 'ignored_buckets', []):
+		if len(entry) == 3:
+			b, r, reason = entry
+			print(f"  - {b} (region: {r}) [reason: {reason}]")
+		else:
+			b, r = entry
+			print(f"  - {b} (region: {r})")
 	if not getattr(stats, 'ignored_buckets', []):
 		print("  (none)")
 
