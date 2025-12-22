@@ -18,7 +18,44 @@ Azure authentication uses **the current user credential** via `DefaultAzureCrede
   - `azure-storage-blob` (Azure Storage SDK)
    - `azure-identity` (Azure identity/auth SDK)
 
-## Installation
+## Quick Start with Azure Cloud Shell
+
+The easiest way to get started is to use the automated setup script in Azure Cloud Shell:
+
+### Option 1: Using the Setup Script (Recommended for Azure Cloud Shell)
+
+1. **Open Azure Cloud Shell**
+   - Go to [Azure Portal](https://portal.azure.com/)
+   - Click the Cloud Shell icon in the top navigation bar
+   - Select Bash environment
+
+2. **Download and run the setup script**
+   ```bash
+   # Download the script
+   wget https://raw.githubusercontent.com/ahmedsza/awss3toazureblobcopy/main/setup-and-run.sh
+   
+   # Review the script (optional but recommended)
+   cat setup-and-run.sh
+   
+   # Make it executable and run with your parameters
+   chmod +x setup-and-run.sh
+   ./setup-and-run.sh --account-name yourstorageaccount --region us-east-1
+   ```
+   
+   **Alternative (Quick but less secure):**
+   If you trust the source, you can pipe directly to bash:
+   ```bash
+   curl -sL https://raw.githubusercontent.com/ahmedsza/awss3toazureblobcopy/main/setup-and-run.sh | bash -s -- --account-name yourstorageaccount --region us-east-1
+   ```
+   ⚠️ **Security Note**: Piping scripts from the internet directly to bash can be risky. It's recommended to download and inspect the script first.
+
+The script will automatically:
+- Clone this repository
+- Set up a Python virtual environment
+- Install all required dependencies
+- Run the copy tool with your provided parameters
+
+### Option 2: Manual Installation
 
 1. Clone or download this repository
 2. Install the required dependencies:
@@ -30,7 +67,7 @@ pip install -r requirements.txt
 Or install packages individually:
 
 ```bash
-pip install boto3 azure-storage-blob
+pip install boto3 azure-storage-blob azure-identity
 ```
 
 ## Features
@@ -62,6 +99,41 @@ You can provide configuration parameters using either environment variables or c
 ```bash
 python copyawstoazure.py --account-name yourstorageaccount --region us-east-1
 ```
+
+### Using the Azure Cloud Shell Setup Script
+
+The `setup-and-run.sh` script provides the most convenient way to run this tool in Azure Cloud Shell:
+
+```bash
+# Clone the repository first (if not already done)
+git clone https://github.com/ahmedsza/awss3toazureblobcopy.git
+cd awss3toazureblobcopy
+
+# Run the setup script with your parameters
+bash setup-and-run.sh --account-name yourstorageaccount --region us-east-1
+```
+
+The script accepts all the same parameters as `copyawstoazure.py`. You can also use environment variables:
+
+```bash
+# Set environment variables
+export AZURE_STORAGE_ACCOUNT_NAME="yourstorageaccount"
+export AWS_REGION="us-east-1"
+export AWS_ACCESS_KEY_ID="YOUR_ACCESS_KEY"
+export AWS_SECRET_ACCESS_KEY="YOUR_SECRET_KEY"
+
+# Run the setup script
+bash setup-and-run.sh
+```
+
+#### What the Setup Script Does
+
+1. Clones or updates the repository (if run from outside the repo directory)
+2. Creates a Python virtual environment (if not already present)
+3. Installs all required dependencies from `requirements.txt`
+4. Verifies Azure CLI authentication status
+5. Runs `copyawstoazure.py` with your provided parameters
+6. Provides colored output to track progress
 
 ### Using Environment Variables (PowerShell)
 
